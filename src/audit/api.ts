@@ -2,7 +2,10 @@
 import axios from 'axios';
 import type { PipelineResult, ClientSummary } from './types';
 
-const BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:8080';
+// Same-origin in production (Vercel serves the API under /api); local dev talks
+// to Flask on :8080 unless VITE_API_BASE overrides it.
+const env = (import.meta as any).env ?? {};
+const BASE: string = env.VITE_API_BASE ?? (env.DEV ? 'http://localhost:8080' : '');
 
 export const api = axios.create({ baseURL: BASE });
 

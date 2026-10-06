@@ -10,14 +10,12 @@ so it cannot invent figures.
 
 import json
 import os
+import urllib.request
 
 from . import insights
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
-
-_genai = None
-_configured = False
 
 
 def gemini_available():
@@ -59,65 +57,53 @@ def active_provider():
     return _probe_provider
 
 
-def _get_genai():
-    """Lazy import + configure so a missing package degrades gracefully."""
-    global _genai, _configured
-    if _genai is None:
-        try:
-            import google.generativeai as genai
-            _genai = genai
-        except Exception:
-            return None
-    if not _configured:
-        key = os.environ.get("GEMINI_API_KEY")
-        if not key:
-            return None
-        try:
-            _genai.configure(api_key=key)
-            _configured = True
-        except Exception:
-            return None
-    return _genai
+def _post_json(url, payload, headers=None, timeout=30):
+    """Minimal stdlib JSON POST (keeps the serverless bundle small: no SDKs)."""
+    req = urllib.request.Request(
+        url, data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", **(headers or {})})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
 
 
 def _gen_gemini(prompt, system="", temperature=0.3, max_tokens=900, json_mode=False):
-    """Single non-streaming Gemini call. Returns text or None on any failure."""
-    genai = _get_genai()
-    if genai is None:
+    """Single non-streaming Gemini call (REST). Returns text or None on any failure."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
         return None
     full = f"{system}\n\n{prompt}" if system else prompt
     if json_mode:
         full += "\n\nRespond with valid JSON only, no markdown fences."
     try:
-        model = genai.GenerativeModel(MODEL)
-        resp = model.generate_content(
-            full,
-            generation_config=genai.types.GenerationConfig(
-                temperature=temperature, max_output_tokens=max_tokens),
-        )
-        return (resp.text or "").strip()
+        data = _post_json(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent",
+            {"contents": [{"role": "user", "parts": [{"text": full}]}],
+             "generationConfig": {"temperature": temperature,
+                                  "maxOutputTokens": max_tokens}},
+            headers={"x-goog-api-key": key})
+        parts = data["candidates"][0]["content"]["parts"]
+        return "".join(p.get("text", "") for p in parts).strip()
     except Exception:
         return None
 
 
 def _gen_openai(prompt, system="", temperature=0.3, max_tokens=900, json_mode=False):
-    """Fallback to OpenAI GPT-4o (SDK 0.28 ChatCompletion). Returns text or None."""
+    """Fallback to OpenAI GPT-4o (REST chat completions). Returns text or None."""
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         return None
     try:
-        import openai
-        openai.api_key = key
         sys_msg = system or "You are a precise assistant."
         if json_mode:
             sys_msg += " Respond with valid JSON only, no markdown fences."
-        resp = openai.ChatCompletion.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "system", "content": sys_msg},
-                      {"role": "user", "content": prompt}],
-            temperature=temperature, max_tokens=max_tokens,
-        )
-        return (resp.choices[0].message["content"] or "").strip()
+        data = _post_json(
+            "https://api.openai.com/v1/chat/completions",
+            {"model": OPENAI_MODEL,
+             "messages": [{"role": "system", "content": sys_msg},
+                          {"role": "user", "content": prompt}],
+             "temperature": temperature, "max_tokens": max_tokens},
+            headers={"Authorization": f"Bearer {key}"})
+        return (data["choices"][0]["message"]["content"] or "").strip()
     except Exception:
         return None
 

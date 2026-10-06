@@ -49,7 +49,7 @@ const AppShell: React.FC = () => {
     if (clientsQ.isLoading)
       return <Center><Loader2 className="animate-spin text-radioactive-600" /> Loading engagements…</Center>;
     if (clientsQ.isError)
-      return <Center><ServerCrash className="text-status-material" /> Backend unreachable — is the API running on :8080?</Center>;
+      return <Center><ServerCrash className="text-status-material" /> Backend unreachable — is the API running?</Center>;
     if (!clients.length)
       return <Center>No engagements yet. Run <code className="mx-1">scripts/generate_dataset.py</code> or use “New ingest”.</Center>;
     if (resultQ.isLoading || !resultQ.data)
