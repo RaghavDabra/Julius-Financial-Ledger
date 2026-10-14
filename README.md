@@ -1,5 +1,11 @@
 # LedgerLens — AI-Enabled Audit Data Pipeline
 
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![React](https://img.shields.io/badge/React-18-61dafb.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg)
+![Vite](https://img.shields.io/badge/Vite-5-646cff.svg)
+![Flask](https://img.shields.io/badge/API-Flask-000000.svg)
+
 An assurance-grade pipeline that ingests messy **General Ledger (GL)** and **Trial
 Balance (TB)** exports from many different clients, then **cleans → standardises →
 validates → deduplicates → reconciles → documents** the data, with a full
@@ -10,6 +16,15 @@ and works with no API key.
 
 Built for the audit & assurance case study (handling data variability, AI vs
 deterministic logic, reconciliation, production reliability, auditability, scaling).
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Architecture](#architecture)
+- [How it answers the case study](#how-it-answers-the-case-study)
+- [Project layout](#project-layout)
+- [Testing the reconciliation yourself](#testing-the-reconciliation-yourself)
+- [License](#license)
 
 ---
 
@@ -134,3 +149,10 @@ missing values were injected per client). Download any engagement's
 **Report PDF** / **Audit JSON** from the UI header, or hit
 `/api/report/<client_id>.json`, and cross-check the findings against the answer key —
 `scripts/verify_pipeline.py` automates exactly this.
+
+## License
+
+Released under the [MIT License](./LICENSE). © 2026 Raghav Dabra.
+
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) and [`INFO.md`](./INFO.md) for deeper
+design notes.
